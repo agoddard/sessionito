@@ -39,6 +39,9 @@ app.get('/api/projects/:projectId/sessions', async (req, res) => {
       sessions = sessions.filter(s => !s.isAgentSession && !s.id?.startsWith('agent-'));
     }
 
+    // Filter out empty/invalid sessions (0 messages, likely warmup or incomplete sessions)
+    sessions = sessions.filter(s => s.userMessageCount > 0 || s.assistantMessageCount > 0);
+
     res.json(sessions);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -69,6 +72,9 @@ app.get('/api/sessions', async (req, res) => {
     if (excludeAgents) {
       allSessions = allSessions.filter(s => !s.isAgentSession && !s.id?.startsWith('agent-'));
     }
+
+    // Filter out empty/invalid sessions (0 messages, likely warmup or incomplete sessions)
+    allSessions = allSessions.filter(s => s.userMessageCount > 0 || s.assistantMessageCount > 0);
 
     // Sort by timestamp
     allSessions.sort((a, b) =>
@@ -121,6 +127,11 @@ app.get('/api/sessions/:sessionId', async (req, res) => {
 
     const session = await sessionReader.readSession(sessionPath);
     session.project = projectInfo;
+
+    // Fallback to URL sessionId if session.id is null (empty/incomplete sessions)
+    if (!session.id) {
+      session.id = sessionId;
+    }
 
     res.json(session);
   } catch (err) {
@@ -271,6 +282,11 @@ app.get('/api/search', async (req, res) => {
       for (const session of sessions) {
         // Skip agent sessions if requested
         if (excludeAgents && (session.isAgentSession || session.id?.startsWith('agent-'))) {
+          continue;
+        }
+
+        // Skip empty/invalid sessions (0 messages)
+        if (session.userMessageCount === 0 && session.assistantMessageCount === 0) {
           continue;
         }
 
