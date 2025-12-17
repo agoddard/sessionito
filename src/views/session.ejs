@@ -32,6 +32,20 @@
   </aside>
 </div>
 
+<!-- File preview modal -->
+<div id="filePreviewModal" class="modal" style="display: none;">
+  <div class="modal-backdrop" onclick="closeFilePreview()"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <span class="modal-title" id="modalFileName"></span>
+      <button class="modal-close" onclick="closeFilePreview()">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <iframe id="previewFrame" style="width: 100%; height: 100%; border: none;"></iframe>
+    </div>
+  </div>
+</div>
+
 <script src="/js/renderer.js"></script>
 <script>
 const sessionId = '${sessionId}';
@@ -258,5 +272,31 @@ function renderConversation(session) {
     hljs.highlightElement(block);
   });
 }
+
+function openFilePreview(filePath) {
+  const fileName = filePath.split('/').pop();
+  const modal = document.getElementById('filePreviewModal');
+  const frame = document.getElementById('previewFrame');
+  const title = document.getElementById('modalFileName');
+
+  title.textContent = fileName;
+  frame.src = '/api/preview-file?path=' + encodeURIComponent(filePath);
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeFilePreview() {
+  const modal = document.getElementById('filePreviewModal');
+  const frame = document.getElementById('previewFrame');
+
+  modal.style.display = 'none';
+  frame.src = '';
+  document.body.style.overflow = '';
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeFilePreview();
+});
 </script>
 `}) %>

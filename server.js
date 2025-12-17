@@ -313,6 +313,83 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
+// API: Serve a file for preview (for viewing written files)
+app.get('/api/preview-file', (req, res) => {
+  const filePath = req.query.path;
+
+  if (!filePath) {
+    return res.status(400).json({ error: 'path parameter required' });
+  }
+
+  // Security: only allow certain file extensions
+  const allowedExtensions = ['.html', '.htm', '.css', '.js', '.json', '.txt', '.md', '.svg'];
+  const ext = path.extname(filePath).toLowerCase();
+
+  if (!allowedExtensions.includes(ext)) {
+    return res.status(403).json({ error: `File type ${ext} not allowed for preview` });
+  }
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'File not found' });
+  }
+
+  // Special handling for markdown - render as HTML
+  if (ext === '.md') {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const escapedContent = JSON.stringify(content);
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      color: #333;
+    }
+    pre { background: #f5f5f5; padding: 16px; border-radius: 8px; overflow-x: auto; }
+    code { font-family: 'SF Mono', Monaco, monospace; font-size: 0.9em; }
+    pre code { background: none; }
+    code:not(pre code) { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; }
+    h1, h2, h3 { margin-top: 1.5em; }
+    a { color: #0066cc; }
+    blockquote { border-left: 4px solid #ddd; margin-left: 0; padding-left: 16px; color: #666; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background: #f5f5f5; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <div id="content"></div>
+  <script>
+    const content = ${escapedContent};
+    document.getElementById('content').innerHTML = marked.parse(content);
+  </script>
+</body>
+</html>`;
+    res.setHeader('Content-Type', 'text/html');
+    return res.send(html);
+  }
+
+  // Set appropriate content type
+  const contentTypes = {
+    '.html': 'text/html',
+    '.htm': 'text/html',
+    '.css': 'text/css',
+    '.js': 'application/javascript',
+    '.json': 'application/json',
+    '.txt': 'text/plain',
+    '.svg': 'image/svg+xml'
+  };
+
+  res.setHeader('Content-Type', contentTypes[ext] || 'text/plain');
+  res.sendFile(filePath);
+});
+
 // Page: Session browser (list)
 app.get('/', async (req, res) => {
   res.render('index');

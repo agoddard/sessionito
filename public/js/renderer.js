@@ -225,6 +225,27 @@ class MessageRenderer {
       ${inputPreview ? `<span class="tool-preview">${this.escapeHtml(inputPreview)}</span>` : ''}
     `;
 
+    // Add "Open" button for Write tool with previewable files
+    if (block.name === 'Write' && block.input?.file_path) {
+      const filePath = block.input.file_path;
+      const ext = filePath.split('.').pop()?.toLowerCase();
+      const previewableExtensions = ['html', 'htm', 'css', 'js', 'json', 'txt', 'md', 'svg'];
+
+      if (previewableExtensions.includes(ext)) {
+        const fileName = filePath.split('/').pop();
+        const openBtn = document.createElement('button');
+        openBtn.className = 'open-file-btn';
+        openBtn.textContent = `Open ${fileName}`;
+        openBtn.onclick = (e) => {
+          e.stopPropagation();
+          if (typeof openFilePreview === 'function') {
+            openFilePreview(filePath);
+          }
+        };
+        summary.appendChild(openBtn);
+      }
+    }
+
     const inputDiv = document.createElement('div');
     inputDiv.className = 'tool-input';
 

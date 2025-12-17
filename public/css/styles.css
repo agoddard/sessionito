@@ -571,8 +571,6 @@ a:hover {
   align-self: flex-end;
   margin-left: 40px;
   max-width: 85%;
-  border-left: none;
-  border-right: 3px solid var(--primary);
 }
 
 .message-display-user-input .message-header {
@@ -1183,6 +1181,95 @@ a:hover {
 *:focus-visible {
   outline: 2px solid var(--sno);
   outline-offset: 2px;
+}
+
+/* File Preview Modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.modal-content {
+  position: relative;
+  width: 90%;
+  height: 85%;
+  max-width: 1200px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: var(--grey-700);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-title {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: var(--text-primary);
+}
+
+.modal-body {
+  flex: 1;
+  overflow: auto;
+  background: white;
+}
+
+/* Open file button in tool blocks */
+.open-file-btn {
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-family: 'Space Mono', monospace;
+  background: var(--grey-700);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--le-blue);
+  cursor: pointer;
+  transition: all 150ms ease-out;
+}
+
+.open-file-btn:hover {
+  background: var(--grey-900);
+  border-color: var(--le-blue);
 }
 
 /* Reduce Motion */
