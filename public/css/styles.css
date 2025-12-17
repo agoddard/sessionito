@@ -857,6 +857,102 @@ a:hover {
   color: var(--text-secondary);
 }
 
+/* Line numbers should not be selected when copying */
+.tool-result-content .line-number {
+  user-select: none;
+  color: var(--grey-500);
+}
+
+/* Markdown content in tool results */
+.tool-result-text {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.tool-result-text p {
+  margin-bottom: 12px;
+}
+
+.tool-result-text p:last-child {
+  margin-bottom: 0;
+}
+
+.tool-result-text code {
+  font-family: 'Space Mono', monospace;
+  background: var(--grey-700);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.8em;
+}
+
+.tool-result-text pre {
+  background: var(--charcoal);
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 12px 0;
+  border: 1px solid var(--border-color);
+}
+
+.tool-result-text pre code {
+  background: none;
+  padding: 0;
+}
+
+.tool-result-text ul, .tool-result-text ol {
+  margin: 8px 0 12px 20px;
+}
+
+.tool-result-text li {
+  margin-bottom: 4px;
+}
+
+.tool-result-text h1, .tool-result-text h2, .tool-result-text h3 {
+  font-family: 'Outfit', sans-serif;
+  margin: 16px 0 8px;
+  color: var(--text-primary);
+}
+
+.tool-result-text h1 { font-size: 1.25rem; font-weight: 600; }
+.tool-result-text h2 { font-size: 1.125rem; font-weight: 600; }
+.tool-result-text h3 { font-size: 1rem; font-weight: 600; }
+
+.tool-result-text h1:first-child,
+.tool-result-text h2:first-child,
+.tool-result-text h3:first-child {
+  margin-top: 0;
+}
+
+.tool-result-text a {
+  color: var(--le-blue);
+}
+
+.tool-result-text blockquote {
+  border-left: 3px solid var(--grey-500);
+  padding-left: 12px;
+  margin: 12px 0;
+  color: var(--text-muted);
+}
+
+.tool-result-text table {
+  border-collapse: collapse;
+  margin: 12px 0;
+  width: 100%;
+}
+
+.tool-result-text th, .tool-result-text td {
+  border: 1px solid var(--border-color);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.tool-result-text th {
+  background: var(--grey-700);
+  font-weight: 600;
+}
+
 /* Todos Block - Code-first style */
 .todos-block {
   font-family: 'Space Mono', monospace;

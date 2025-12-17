@@ -214,6 +214,13 @@ class MessageRenderer {
     return details;
   }
 
+  // Check if text looks like line-numbered file content (cat -n format)
+  hasLineNumbers(text) {
+    // Check if first few lines match the pattern "  <number>→"
+    const lines = text.split('\n').slice(0, 3);
+    return lines.some(line => /^\s*\d+→/.test(line));
+  }
+
   // Render tool result block
   renderToolResultBlock(block) {
     const details = document.createElement('details');
@@ -229,15 +236,47 @@ class MessageRenderer {
     if (Array.isArray(block.content)) {
       for (const item of block.content) {
         if (item.type === 'text') {
-          const pre = document.createElement('pre');
-          pre.textContent = item.text;
-          content.appendChild(pre);
+          const text = item.text || '';
+
+          // If content has line numbers, render as pre with non-selectable line numbers
+          if (this.hasLineNumbers(text)) {
+            const pre = document.createElement('pre');
+            pre.innerHTML = this.wrapLineNumbers(this.escapeHtml(text));
+            content.appendChild(pre);
+          } else {
+            // Otherwise render as markdown
+            const div = document.createElement('div');
+            div.className = 'tool-result-text';
+            try {
+              div.innerHTML = marked.parse(text);
+            } catch (e) {
+              const pre = document.createElement('pre');
+              pre.textContent = text;
+              div.appendChild(pre);
+            }
+            content.appendChild(div);
+          }
         }
       }
     } else if (typeof block.content === 'string') {
-      const pre = document.createElement('pre');
-      pre.textContent = block.content;
-      content.appendChild(pre);
+      const text = block.content;
+
+      if (this.hasLineNumbers(text)) {
+        const pre = document.createElement('pre');
+        pre.innerHTML = this.wrapLineNumbers(this.escapeHtml(text));
+        content.appendChild(pre);
+      } else {
+        const div = document.createElement('div');
+        div.className = 'tool-result-text';
+        try {
+          div.innerHTML = marked.parse(text);
+        } catch (e) {
+          const pre = document.createElement('pre');
+          pre.textContent = text;
+          div.appendChild(pre);
+        }
+        content.appendChild(div);
+      }
     }
 
     details.appendChild(summary);
@@ -262,5 +301,13 @@ class MessageRenderer {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  // Wrap line numbers in non-selectable spans for code content
+  // Detects cat -n style output (e.g., "     1→" or "    12→")
+  wrapLineNumbers(text) {
+    // Pattern matches line numbers at start of lines (spaces + digits + arrow)
+    const lineNumberPattern = /^(\s*\d+→)/gm;
+    return text.replace(lineNumberPattern, '<span class="line-number">$1</span>');
   }
 }
