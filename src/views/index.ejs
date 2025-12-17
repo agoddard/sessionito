@@ -21,12 +21,29 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  loadSessions();
   loadProjects();
 
-  document.getElementById('searchInput').addEventListener('input', debounce(handleSearch, 300));
+  // Check for search query in URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const searchQuery = urlParams.get('q');
+  const searchInput = document.getElementById('searchInput');
+
+  if (searchQuery) {
+    // Pre-fill search input and perform search
+    searchInput.value = searchQuery;
+    performSearch(searchQuery);
+  } else {
+    loadSessions();
+  }
+
+  searchInput.addEventListener('input', debounce(handleSearch, 300));
   document.getElementById('projectFilter').addEventListener('change', loadSessions);
-  document.getElementById('refreshBtn').addEventListener('click', loadSessions);
+  document.getElementById('refreshBtn').addEventListener('click', () => {
+    // Clear search when refreshing
+    searchInput.value = '';
+    window.history.replaceState({}, '', '/');
+    loadSessions();
+  });
 });
 
 let currentPage = 1;
@@ -132,12 +149,23 @@ function renderPagination(data) {
   container.innerHTML = html;
 }
 
-async function handleSearch(e) {
+function handleSearch(e) {
   const query = e.target.value.trim();
   if (query.length < 2) {
+    // Clear URL search param when search is cleared
+    window.history.replaceState({}, '', '/');
     loadSessions();
     return;
   }
+  performSearch(query);
+}
+
+async function performSearch(query) {
+  // Update URL with search query (without page reload)
+  window.history.replaceState({}, '', '/?q=' + encodeURIComponent(query));
+
+  // Clear project filter when searching (search is global)
+  document.getElementById('projectFilter').value = '';
 
   const container = document.getElementById('sessionList');
   container.innerHTML = '<div class="loading">Searching...</div>';
