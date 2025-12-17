@@ -56,9 +56,14 @@ const Settings = {
       }
     }
     if (this.get('hideAgentSessions')) {
-      // Agent sessions have UUID-style IDs instead of human-readable slugs
+      const userMsgCount = session.userMessageCount || 0;
+      // Agent sessions have UUID-style IDs and typically only 1 user message (the task)
       const sessionId = session.id || '';
-      if (this.isUUID(sessionId)) {
+      if (this.isUUID(sessionId) && userMsgCount <= 1) {
+        return true;
+      }
+      // Hide sessions with no user messages (assistant-only)
+      if (userMsgCount === 0 && session.assistantMessageCount > 0) {
         return true;
       }
     }
