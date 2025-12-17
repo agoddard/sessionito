@@ -97,12 +97,15 @@ class ProjectScanner {
         timestamp: null,
         gitBranch: null,
         version: null,
-        firstMessage: null
+        firstMessage: null,
+        isAgentOnly: false,
+        userMessageCount: 0,
+        assistantMessageCount: 0
       };
 
       rl.on('line', (line) => {
         lineCount++;
-        if (lineCount > 20) {
+        if (lineCount > 50) {
           rl.close();
           stream.destroy();
           return;
@@ -110,6 +113,15 @@ class ProjectScanner {
 
         try {
           const parsed = JSON.parse(line);
+
+          // Count message types
+          if (parsed.type === 'user') {
+            metadata.userMessageCount++;
+          } else if (parsed.type === 'assistant') {
+            metadata.assistantMessageCount++;
+          }
+
+          // Extract metadata from first user message
           if (parsed.type === 'user' && !metadata.sessionId) {
             metadata.sessionId = parsed.sessionId;
             metadata.slug = parsed.slug;
@@ -127,7 +139,24 @@ class ProjectScanner {
               }
             }
           }
+
+          // For sessions without user messages, get metadata from assistant
+          if (parsed.type === 'assistant' && !metadata.sessionId) {
+            metadata.sessionId = parsed.sessionId;
+            metadata.slug = parsed.slug;
+            metadata.timestamp = parsed.timestamp;
+            metadata.gitBranch = parsed.gitBranch;
+            metadata.version = parsed.version;
+          }
         } catch (e) { /* skip malformed lines */ }
+      });
+
+      rl.on('close', () => {
+        // Mark as agent-only if no user messages and first message starts with "agent"
+        metadata.isAgentOnly = metadata.userMessageCount === 0 &&
+          metadata.assistantMessageCount > 0 &&
+          (metadata.slug?.toLowerCase().startsWith('agent') || false);
+        resolve(metadata);
       });
 
       rl.on('close', () => resolve(metadata));

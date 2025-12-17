@@ -67,6 +67,8 @@ function getFirstMessage(session) {
   return textBlock?.text || null;
 }
 
+let cachedProjectSessions = [];
+
 document.addEventListener('DOMContentLoaded', () => {
   loadSession();
   if (projectId) {
@@ -74,6 +76,13 @@ document.addEventListener('DOMContentLoaded', () => {
   } else {
     document.getElementById('sessionSidebar').style.display = 'none';
   }
+
+  // Re-render sidebar when settings change
+  window.addEventListener('settingsChanged', () => {
+    if (cachedProjectSessions.length > 0) {
+      renderSessionNav(cachedProjectSessions);
+    }
+  });
 });
 
 async function loadSession() {
@@ -103,6 +112,7 @@ async function loadProjectSessions() {
   try {
     const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/sessions');
     const sessions = await res.json();
+    cachedProjectSessions = sessions;
     renderSessionNav(sessions);
   } catch (err) {
     document.getElementById('sessionNav').innerHTML =
@@ -112,13 +122,14 @@ async function loadProjectSessions() {
 
 function renderSessionNav(sessions) {
   const nav = document.getElementById('sessionNav');
+  const filteredSessions = Settings.filterSessions(sessions);
 
-  if (sessions.length === 0) {
+  if (filteredSessions.length === 0) {
     nav.innerHTML = '<div class="empty">No sessions</div>';
     return;
   }
 
-  nav.innerHTML = sessions.map(s => {
+  nav.innerHTML = filteredSessions.map(s => {
     const isActive = s.id === sessionId;
     const title = truncateTitle(s.firstMessage, 80) || s.slug || s.id.slice(0, 8);
     const relativeTime = formatRelativeTime(s.timestamp);

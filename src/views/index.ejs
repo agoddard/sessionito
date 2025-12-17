@@ -70,6 +70,16 @@ document.addEventListener('DOMContentLoaded', () => {
     window.history.replaceState({}, '', '/');
     loadSessions();
   });
+
+  // Reload when settings change
+  window.addEventListener('settingsChanged', () => {
+    const searchQuery = document.getElementById('searchInput').value.trim();
+    if (searchQuery.length >= 2) {
+      performSearch(searchQuery);
+    } else {
+      loadSessions(currentPage);
+    }
+  });
 });
 
 let currentPage = 1;
@@ -105,9 +115,10 @@ async function loadSessions(page = 1) {
       pages = data.pages;
     }
 
-    renderSessions(sessions);
+    const filteredSessions = Settings.filterSessions(sessions);
+    renderSessions(filteredSessions);
     renderPagination({ page: currentPage, pages, total });
-    document.getElementById('stats').textContent = total + ' sessions';
+    document.getElementById('stats').textContent = filteredSessions.length + ' sessions' + (filteredSessions.length !== total ? ' (filtered)' : '');
   } catch (err) {
     container.innerHTML = '<div class="error">Failed to load sessions</div>';
   }
@@ -197,8 +208,9 @@ async function performSearch(query) {
   try {
     const res = await fetch('/api/search?q=' + encodeURIComponent(query));
     const data = await res.json();
-    renderSessions(data.results);
-    document.getElementById('stats').textContent = data.results.length + ' results';
+    const filteredResults = Settings.filterSessions(data.results);
+    renderSessions(filteredResults);
+    document.getElementById('stats').textContent = filteredResults.length + ' results' + (filteredResults.length !== data.results.length ? ' (filtered)' : '');
     document.getElementById('pagination').innerHTML = '';
   } catch (err) {
     container.innerHTML = '<div class="error">Search failed</div>';
