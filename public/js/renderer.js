@@ -7,6 +7,29 @@ class MessageRenderer {
     });
   }
 
+  // Determine the display type for a message (for chat-like layout)
+  getMessageDisplayType(message) {
+    if (message.type === 'assistant') {
+      // Check if message only contains thinking and/or tool_use blocks (no text)
+      const hasOnlyToolContent = message.content &&
+        message.content.length > 0 &&
+        message.content.every(block => block.type === 'thinking' || block.type === 'tool_use');
+
+      return hasOnlyToolContent ? 'tool-only' : 'assistant';
+    }
+
+    if (message.type === 'user') {
+      // Check if ALL content blocks are tool_result
+      const hasOnlyToolResults = message.content &&
+        message.content.length > 0 &&
+        message.content.every(block => block.type === 'tool_result');
+
+      return hasOnlyToolResults ? 'tool-result-only' : 'user-input';
+    }
+
+    return message.type;
+  }
+
   // Tool icons
   getToolIcon(toolName) {
     const icons = {
@@ -29,12 +52,15 @@ class MessageRenderer {
 
   // Render a full message
   renderMessage(message) {
+    const displayType = this.getMessageDisplayType(message);
     const container = document.createElement('div');
-    container.className = `message message-${message.type}`;
+    container.className = `message message-${message.type} message-display-${displayType}`;
     container.dataset.uuid = message.uuid || '';
 
-    // Add header
-    container.appendChild(this.renderHeader(message));
+    // Only add header for non-compact messages
+    if (displayType !== 'tool-result-only' && displayType !== 'tool-only') {
+      container.appendChild(this.renderHeader(message));
+    }
 
     // Content wrapper
     const contentWrapper = document.createElement('div');

@@ -561,6 +561,71 @@ a:hover {
   border-left: 3px solid var(--vermont);
 }
 
+/* Chat-like layout: Left-aligned assistant messages */
+.message-display-assistant {
+  margin-right: 40px;
+}
+
+/* Chat-like layout: Right-aligned user input messages */
+.message-display-user-input {
+  align-self: flex-end;
+  margin-left: 40px;
+  max-width: 85%;
+  border-left: none;
+  border-right: 3px solid var(--primary);
+}
+
+.message-display-user-input .message-header {
+  flex-direction: row-reverse;
+}
+
+.message-display-user-input .message-meta {
+  flex-direction: row-reverse;
+}
+
+/* Compact tool-only assistant messages (just thinking/tool_use blocks) */
+.message-display-tool-only {
+  background: transparent;
+  border: none;
+  border-left: 2px solid var(--grey-600);
+  border-radius: 0;
+  margin-left: 20px;
+  margin-right: 40px;
+  margin-top: -16px;
+}
+
+.message-display-tool-only .message-content {
+  padding: 0;
+}
+
+.message-display-tool-only .content-block {
+  padding: 4px 12px;
+  border-bottom: none;
+}
+
+/* Compact tool-result-only messages */
+.message-display-tool-result-only {
+  background: transparent;
+  border: none;
+  border-left: 2px solid var(--grey-600);
+  border-radius: 0;
+  margin-left: 20px;
+  margin-top: -16px;
+}
+
+.message-display-tool-result-only .message-content {
+  padding: 0;
+}
+
+.message-display-tool-result-only .content-block {
+  padding: 8px 16px;
+  border-bottom: none;
+}
+
+.message-display-tool-result-only .tool-result-block {
+  padding: 4px 12px;
+}
+
 .message-header {
   display: flex;
   justify-content: space-between;
@@ -1222,6 +1287,18 @@ a:hover {
 
   .session-main {
     padding: 16px;
+  }
+
+  /* Chat layout responsive adjustments */
+  .message-display-user-input {
+    max-width: 95%;
+    min-width: 200px;
+  }
+
+  .message-display-tool-only,
+  .message-display-tool-result-only {
+    margin-left: 12px;
+    margin-top: -12px;
   }
 }
 
