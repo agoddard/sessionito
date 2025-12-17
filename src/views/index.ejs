@@ -1,0 +1,170 @@
+<%- include('layout', { title: 'Claude Session Viewer', body: `
+<div class="session-browser">
+  <div class="browser-header">
+    <h1>Sessions</h1>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="filter-bar">
+    <select id="projectFilter" class="filter-select">
+      <option value="">All Projects</option>
+    </select>
+    <button id="refreshBtn" class="btn btn-secondary">Refresh</button>
+  </div>
+
+  <div id="sessionList" class="session-list">
+    <div class="loading">Loading sessions...</div>
+  </div>
+
+  <div id="pagination" class="pagination"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  loadSessions();
+  loadProjects();
+
+  document.getElementById('searchInput').addEventListener('input', debounce(handleSearch, 300));
+  document.getElementById('projectFilter').addEventListener('change', loadSessions);
+  document.getElementById('refreshBtn').addEventListener('click', loadSessions);
+});
+
+let currentPage = 1;
+
+async function loadSessions(page = 1) {
+  currentPage = page;
+  const projectFilter = document.getElementById('projectFilter').value;
+  const container = document.getElementById('sessionList');
+  container.innerHTML = '<div class="loading">Loading sessions...</div>';
+
+  try {
+    let sessions, total, pages;
+
+    if (projectFilter) {
+      // Fetch sessions for specific project
+      const res = await fetch('/api/projects/' + encodeURIComponent(projectFilter) + '/sessions');
+      const projectSessions = await res.json();
+      // Add project info to each session
+      const projectName = document.getElementById('projectFilter').selectedOptions[0].textContent.split(' (')[0];
+      sessions = projectSessions.map(s => ({
+        ...s,
+        project: projectName,
+        projectId: projectFilter
+      }));
+      total = sessions.length;
+      pages = 1;
+    } else {
+      // Fetch all sessions paginated
+      const res = await fetch('/api/sessions?page=' + page + '&limit=30');
+      const data = await res.json();
+      sessions = data.sessions;
+      total = data.total;
+      pages = data.pages;
+    }
+
+    renderSessions(sessions);
+    renderPagination({ page: currentPage, pages, total });
+    document.getElementById('stats').textContent = total + ' sessions';
+  } catch (err) {
+    container.innerHTML = '<div class="error">Failed to load sessions</div>';
+  }
+}
+
+async function loadProjects() {
+  try {
+    const res = await fetch('/api/projects');
+    const projects = await res.json();
+    const select = document.getElementById('projectFilter');
+
+    projects.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name + ' (' + p.sessionCount + ')';
+      select.appendChild(opt);
+    });
+  } catch (err) {}
+}
+
+function renderSessions(sessions) {
+  const container = document.getElementById('sessionList');
+
+  if (sessions.length === 0) {
+    container.innerHTML = '<div class="empty">No sessions found</div>';
+    return;
+  }
+
+  container.innerHTML = sessions.map(s => {
+    const date = s.timestamp ? new Date(s.timestamp).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    }) : 'Unknown date';
+
+    return \`
+      <a href="/session/\${s.id}?project=\${s.projectId}" class="session-card">
+        <div class="session-top">
+          <span class="session-slug">\${s.slug || s.id}</span>
+          <span class="session-date">\${date}</span>
+        </div>
+        <div class="session-meta">
+          <span class="session-project">\${s.project}</span>
+          <span class="session-id">\${s.id}</span>
+        </div>
+        \${s.firstMessage ? '<div class="session-preview">' + escapeHtml(s.firstMessage) + '</div>' : ''}
+      </a>
+    \`;
+  }).join('');
+}
+
+function renderPagination(data) {
+  const container = document.getElementById('pagination');
+  if (data.pages <= 1) {
+    container.innerHTML = '';
+    return;
+  }
+
+  let html = '';
+  if (data.page > 1) {
+    html += '<button onclick="loadSessions(' + (data.page - 1) + ')">Prev</button>';
+  }
+  html += '<span>Page ' + data.page + ' of ' + data.pages + '</span>';
+  if (data.page < data.pages) {
+    html += '<button onclick="loadSessions(' + (data.page + 1) + ')">Next</button>';
+  }
+  container.innerHTML = html;
+}
+
+async function handleSearch(e) {
+  const query = e.target.value.trim();
+  if (query.length < 2) {
+    loadSessions();
+    return;
+  }
+
+  const container = document.getElementById('sessionList');
+  container.innerHTML = '<div class="loading">Searching...</div>';
+
+  try {
+    const res = await fetch('/api/search?q=' + encodeURIComponent(query));
+    const data = await res.json();
+    renderSessions(data.results);
+    document.getElementById('stats').textContent = data.results.length + ' results';
+    document.getElementById('pagination').innerHTML = '';
+  } catch (err) {
+    container.innerHTML = '<div class="error">Search failed</div>';
+  }
+}
+
+function debounce(fn, ms) {
+  let timeout;
+  return function(...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => fn.apply(this, args), ms);
+  };
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+</script>
+`}) %>

@@ -1,0 +1,158 @@
+<%- include('layout', { title: 'Session - Claude Viewer', body: `
+<div class="session-page">
+  <aside class="session-sidebar" id="sessionSidebar">
+    <div class="sidebar-header">
+      <a href="/" class="back-link">&larr; All sessions</a>
+      <h3 class="sidebar-title" id="sidebarTitle">Project sessions</h3>
+    </div>
+    <nav class="session-nav" id="sessionNav">
+      <div class="loading">Loading...</div>
+    </nav>
+  </aside>
+
+  <div class="session-main">
+    <div class="session-viewer">
+      <div class="session-header" id="sessionHeader">
+        <div class="loading">Loading session...</div>
+      </div>
+
+      <div id="conversation" class="conversation">
+        <div class="loading">Loading messages...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/renderer.js"></script>
+<script>
+const sessionId = '${sessionId}';
+const projectId = '${projectId}';
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadSession();
+  if (projectId) {
+    loadProjectSessions();
+  } else {
+    document.getElementById('sessionSidebar').style.display = 'none';
+  }
+});
+
+async function loadSession() {
+  try {
+    let url = '/api/sessions/' + sessionId;
+    if (projectId) url += '?project=' + encodeURIComponent(projectId);
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Session not found');
+
+    const session = await res.json();
+    renderSessionHeader(session);
+    renderConversation(session);
+
+    // Update sidebar title with project name
+    if (session.project?.name) {
+      document.getElementById('sidebarTitle').textContent = session.project.name;
+    }
+  } catch (err) {
+    document.getElementById('sessionHeader').innerHTML =
+      '<div class="error">Failed to load session: ' + err.message + '</div>';
+    document.getElementById('conversation').innerHTML = '';
+  }
+}
+
+async function loadProjectSessions() {
+  try {
+    const res = await fetch('/api/projects/' + encodeURIComponent(projectId) + '/sessions');
+    const sessions = await res.json();
+    renderSessionNav(sessions);
+  } catch (err) {
+    document.getElementById('sessionNav').innerHTML =
+      '<div class="error">Failed to load sessions</div>';
+  }
+}
+
+function renderSessionNav(sessions) {
+  const nav = document.getElementById('sessionNav');
+
+  if (sessions.length === 0) {
+    nav.innerHTML = '<div class="empty">No sessions</div>';
+    return;
+  }
+
+  nav.innerHTML = sessions.map(s => {
+    const isActive = s.id === sessionId;
+    const date = s.timestamp
+      ? new Date(s.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : '';
+
+    return \`
+      <a href="/session/\${s.id}?project=\${projectId}"
+         class="session-nav-item \${isActive ? 'active' : ''}">
+        <span class="nav-item-slug">\${s.slug || s.id.slice(0, 8)}</span>
+        <span class="nav-item-date">\${date}</span>
+      </a>
+    \`;
+  }).join('');
+}
+
+function renderSessionHeader(session) {
+  const header = document.getElementById('sessionHeader');
+  const date = session.metadata.startTime
+    ? new Date(session.metadata.startTime).toLocaleString()
+    : 'Unknown date';
+
+  header.innerHTML = \`
+    <h1 class="session-title">\${session.slug || session.id}</h1>
+    <div class="session-meta-row">
+      <span class="meta-item"><strong>Date:</strong> \${date}</span>
+      <span class="meta-item"><strong>Branch:</strong> \${session.metadata.gitBranch || 'N/A'}</span>
+      <span class="meta-item"><strong>Version:</strong> \${session.metadata.version || 'N/A'}</span>
+    </div>
+    <div class="session-stats">
+      <span>\${session.stats.userMessages} user messages</span>
+      <span>\${session.stats.assistantMessages} assistant messages</span>
+      <span>\${session.stats.toolCalls} tool calls</span>
+    </div>
+    <div class="resume-command">
+      <code id="resumeCmd">claude --resume \${session.id}</code>
+      <button class="copy-btn" onclick="copyResume()">Copy</button>
+    </div>
+  \`;
+}
+
+function copyResume() {
+  const cmd = document.getElementById('resumeCmd').textContent;
+  navigator.clipboard.writeText(cmd).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+}
+
+function renderConversation(session) {
+  const container = document.getElementById('conversation');
+  const renderer = new MessageRenderer();
+
+  // Try main conversation first, fall back to all messages (for agent sessions)
+  let messages = session.conversation.filter(m => !m.isSidechain);
+  if (messages.length === 0) {
+    messages = session.conversation;
+  }
+
+  if (messages.length === 0) {
+    container.innerHTML = '<div class="empty">No messages in this session</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  for (const msg of messages) {
+    container.appendChild(renderer.renderMessage(msg));
+  }
+
+  // Apply syntax highlighting to all code blocks
+  document.querySelectorAll('pre code').forEach(block => {
+    hljs.highlightElement(block);
+  });
+}
+</script>
+`}) %>
