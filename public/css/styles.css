@@ -277,36 +277,25 @@ a:hover {
   margin-top: 8px;
 }
 
-/* Pagination */
-.pagination {
+/* Load More (Infinite Scroll) */
+.load-more {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 16px;
-  margin-top: 32px;
-  padding: 16px;
+  padding: 24px 16px;
+  min-height: 60px;
 }
 
-.pagination button {
-  font-family: 'Outfit', sans-serif;
-  font-weight: 500;
-  background: var(--primary);
-  border: none;
-  color: var(--sno);
-  padding: 10px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 150ms ease-out;
-}
-
-.pagination button:hover {
-  background: #0a3a50;
-}
-
-.pagination span {
-  font-family: 'Space Mono', monospace;
+.loading-more {
+  font-family: 'IBM Plex Sans', sans-serif;
   color: var(--text-muted);
   font-size: 0.875rem;
+}
+
+.all-loaded {
+  font-family: 'Space Mono', monospace;
+  color: var(--grey-500);
+  font-size: 0.75rem;
 }
 
 /* Session Page Layout */

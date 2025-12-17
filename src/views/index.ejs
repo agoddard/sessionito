@@ -16,7 +16,7 @@
     <div class="loading">Loading sessions...</div>
   </div>
 
-  <div id="pagination" class="pagination"></div>
+  <div id="loadMore" class="load-more"></div>
 </div>
 
 <script>
@@ -73,44 +73,97 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 let currentPage = 1;
+let totalPages = 1;
+let totalSessions = 0;
+let isLoading = false;
+let allLoaded = false;
+let currentProjectFilter = '';
 
-async function loadSessions(page = 1) {
-  currentPage = page;
-  const projectFilter = document.getElementById('projectFilter').value;
+// Intersection Observer for infinite scroll
+let scrollObserver = null;
+
+function setupScrollObserver() {
+  if (scrollObserver) scrollObserver.disconnect();
+
+  const loadMoreEl = document.getElementById('loadMore');
+  scrollObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && !isLoading && !allLoaded && !currentProjectFilter) {
+      loadMoreSessions();
+    }
+  }, { rootMargin: '200px' });
+
+  scrollObserver.observe(loadMoreEl);
+}
+
+async function loadSessions(reset = true) {
+  if (reset) {
+    currentPage = 1;
+    allLoaded = false;
+    document.getElementById('sessionList').innerHTML = '<div class="loading">Loading sessions...</div>';
+  }
+
+  currentProjectFilter = document.getElementById('projectFilter').value;
   const container = document.getElementById('sessionList');
-  container.innerHTML = '<div class="loading">Loading sessions...</div>';
+  isLoading = true;
+  updateLoadMoreIndicator();
 
   try {
-    let sessions, total, pages;
+    let sessions;
 
-    if (projectFilter) {
-      // Fetch sessions for specific project
-      const res = await fetch('/api/projects/' + encodeURIComponent(projectFilter) + '/sessions');
+    if (currentProjectFilter) {
+      // Fetch all sessions for specific project (no pagination needed)
+      const res = await fetch('/api/projects/' + encodeURIComponent(currentProjectFilter) + '/sessions?excludeAgents=true');
       const projectSessions = await res.json();
-      // Add project info to each session
       const projectName = document.getElementById('projectFilter').selectedOptions[0].textContent.split(' (')[0];
       sessions = projectSessions.map(s => ({
         ...s,
         project: projectName,
-        projectId: projectFilter
+        projectId: currentProjectFilter
       }));
-      total = sessions.length;
-      pages = 1;
+      totalSessions = sessions.length;
+      totalPages = 1;
+      allLoaded = true;
     } else {
-      // Fetch all sessions paginated
-      const res = await fetch('/api/sessions?page=' + page + '&limit=30');
+      // Fetch paginated sessions
+      const res = await fetch('/api/sessions?page=' + currentPage + '&limit=30&excludeAgents=true');
       const data = await res.json();
       sessions = data.sessions;
-      total = data.total;
-      pages = data.pages;
+      totalSessions = data.total;
+      totalPages = data.pages;
+      allLoaded = currentPage >= totalPages;
     }
 
-    const filteredSessions = Settings.filterSessions(sessions);
-    renderSessions(filteredSessions);
-    renderPagination({ page: currentPage, pages, total });
-    document.getElementById('stats').textContent = filteredSessions.length + ' sessions' + (filteredSessions.length !== total ? ' (filtered)' : '');
+    if (reset) {
+      renderSessions(sessions);
+    } else {
+      appendSessions(sessions);
+    }
+
+    document.getElementById('stats').textContent = totalSessions + ' sessions';
+    isLoading = false;
+    updateLoadMoreIndicator();
+    setupScrollObserver();
   } catch (err) {
     container.innerHTML = '<div class="error">Failed to load sessions</div>';
+    isLoading = false;
+    updateLoadMoreIndicator();
+  }
+}
+
+async function loadMoreSessions() {
+  if (isLoading || allLoaded || currentProjectFilter) return;
+  currentPage++;
+  await loadSessions(false);
+}
+
+function updateLoadMoreIndicator() {
+  const loadMoreEl = document.getElementById('loadMore');
+  if (isLoading) {
+    loadMoreEl.innerHTML = '<div class="loading-more">Loading more...</div>';
+  } else if (allLoaded && totalSessions > 0) {
+    loadMoreEl.innerHTML = '<div class="all-loaded">All sessions loaded</div>';
+  } else {
+    loadMoreEl.innerHTML = '';
   }
 }
 
@@ -129,6 +182,33 @@ async function loadProjects() {
   } catch (err) {}
 }
 
+function renderSessionCard(s) {
+  const title = truncateTitle(s.firstMessage, 80) || s.slug || s.id;
+  const relativeTime = formatRelativeTime(s.timestamp);
+  const expandButton = s.hasAgentChildren ? \`
+    <button class="expand-children-btn" onclick="toggleChildren(event, '\${s.id}', '\${s.projectId}')" title="Show agent sessions">
+      <span class="expand-icon">▶</span>
+    </button>
+  \` : '';
+
+  return \`
+    <div class="session-wrapper" data-session-id="\${s.id}">
+      <a href="/session/\${s.id}?project=\${s.projectId}" class="session-card">
+        <div class="session-top">
+          <span class="session-title">\${escapeHtml(title)}</span>
+          <span class="session-date">\${relativeTime}</span>
+        </div>
+        <div class="session-meta">
+          <span class="session-slug">\${s.slug || ''}</span>
+          <span class="session-project">\${s.project}</span>
+        </div>
+      </a>
+      \${expandButton}
+      <div class="session-children" id="children-\${s.id}" style="display: none;"></div>
+    </div>
+  \`;
+}
+
 function renderSessions(sessions) {
   const container = document.getElementById('sessionList');
 
@@ -137,33 +217,13 @@ function renderSessions(sessions) {
     return;
   }
 
-  container.innerHTML = sessions.map(s => {
-    const title = truncateTitle(s.firstMessage, 80) || s.slug || s.id;
-    const relativeTime = formatRelativeTime(s.timestamp);
-    // Only show expand button if session has agent children
-    const expandButton = s.hasAgentChildren ? \`
-      <button class="expand-children-btn" onclick="toggleChildren(event, '\${s.id}', '\${s.projectId}')" title="Show agent sessions">
-        <span class="expand-icon">▶</span>
-      </button>
-    \` : '';
+  container.innerHTML = sessions.map(renderSessionCard).join('');
+}
 
-    return \`
-      <div class="session-wrapper" data-session-id="\${s.id}">
-        <a href="/session/\${s.id}?project=\${s.projectId}" class="session-card">
-          <div class="session-top">
-            <span class="session-title">\${escapeHtml(title)}</span>
-            <span class="session-date">\${relativeTime}</span>
-          </div>
-          <div class="session-meta">
-            <span class="session-slug">\${s.slug || ''}</span>
-            <span class="session-project">\${s.project}</span>
-          </div>
-        </a>
-        \${expandButton}
-        <div class="session-children" id="children-\${s.id}" style="display: none;"></div>
-      </div>
-    \`;
-  }).join('');
+function appendSessions(sessions) {
+  const container = document.getElementById('sessionList');
+  const html = sessions.map(renderSessionCard).join('');
+  container.insertAdjacentHTML('beforeend', html);
 }
 
 // Track expanded sessions
@@ -221,24 +281,6 @@ async function toggleChildren(event, sessionId, projectId) {
   }
 }
 
-function renderPagination(data) {
-  const container = document.getElementById('pagination');
-  if (data.pages <= 1) {
-    container.innerHTML = '';
-    return;
-  }
-
-  let html = '';
-  if (data.page > 1) {
-    html += '<button onclick="loadSessions(' + (data.page - 1) + ')">Prev</button>';
-  }
-  html += '<span>Page ' + data.page + ' of ' + data.pages + '</span>';
-  if (data.page < data.pages) {
-    html += '<button onclick="loadSessions(' + (data.page + 1) + ')">Next</button>';
-  }
-  container.innerHTML = html;
-}
-
 function handleSearch(e) {
   const query = e.target.value.trim();
   if (query.length < 2) {
@@ -257,16 +299,19 @@ async function performSearch(query) {
   // Clear project filter when searching (search is global)
   document.getElementById('projectFilter').value = '';
 
+  // Reset infinite scroll state
+  allLoaded = true;
+  currentProjectFilter = '';
+
   const container = document.getElementById('sessionList');
   container.innerHTML = '<div class="loading">Searching...</div>';
 
   try {
-    const res = await fetch('/api/search?q=' + encodeURIComponent(query));
+    const res = await fetch('/api/search?q=' + encodeURIComponent(query) + '&excludeAgents=true');
     const data = await res.json();
-    const filteredResults = Settings.filterSessions(data.results);
-    renderSessions(filteredResults);
-    document.getElementById('stats').textContent = filteredResults.length + ' results' + (filteredResults.length !== data.results.length ? ' (filtered)' : '');
-    document.getElementById('pagination').innerHTML = '';
+    renderSessions(data.results);
+    document.getElementById('stats').textContent = data.results.length + ' results';
+    document.getElementById('loadMore').innerHTML = '';
   } catch (err) {
     container.innerHTML = '<div class="error">Search failed</div>';
   }

@@ -31,8 +31,14 @@ app.get('/api/projects', async (req, res) => {
 // API: List sessions for a project
 app.get('/api/projects/:projectId/sessions', async (req, res) => {
   try {
+    const excludeAgents = req.query.excludeAgents === 'true';
     const projectPath = path.join(PROJECTS_PATH, req.params.projectId);
-    const sessions = await projectScanner.scanSessions(projectPath);
+    let sessions = await projectScanner.scanSessions(projectPath);
+
+    if (excludeAgents) {
+      sessions = sessions.filter(s => !s.isAgentSession && !s.id?.startsWith('agent-'));
+    }
+
     res.json(sessions);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -42,8 +48,9 @@ app.get('/api/projects/:projectId/sessions', async (req, res) => {
 // API: List all sessions (paginated)
 app.get('/api/sessions', async (req, res) => {
   try {
+    const excludeAgents = req.query.excludeAgents === 'true';
     const projects = await projectScanner.scanProjects();
-    const allSessions = [];
+    let allSessions = [];
 
     for (const project of projects) {
       const projectPath = path.join(PROJECTS_PATH, project.id);
@@ -56,6 +63,11 @@ app.get('/api/sessions', async (req, res) => {
           projectPath: project.path
         });
       }
+    }
+
+    // Filter out agent sessions if requested
+    if (excludeAgents) {
+      allSessions = allSessions.filter(s => !s.isAgentSession && !s.id?.startsWith('agent-'));
     }
 
     // Sort by timestamp
@@ -242,6 +254,8 @@ app.get('/api/sessions/:sessionId/children', async (req, res) => {
 // API: Search sessions
 app.get('/api/search', async (req, res) => {
   const query = req.query.q?.toLowerCase();
+  const excludeAgents = req.query.excludeAgents === 'true';
+
   if (!query || query.length < 2) {
     return res.json({ results: [] });
   }
@@ -255,6 +269,11 @@ app.get('/api/search', async (req, res) => {
       const sessions = await projectScanner.scanSessions(projectPath);
 
       for (const session of sessions) {
+        // Skip agent sessions if requested
+        if (excludeAgents && (session.isAgentSession || session.id?.startsWith('agent-'))) {
+          continue;
+        }
+
         // Search in slug, first message, and project name
         if (
           session.slug?.toLowerCase().includes(query) ||
