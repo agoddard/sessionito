@@ -70,16 +70,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.history.replaceState({}, '', '/');
     loadSessions();
   });
-
-  // Reload when settings change
-  window.addEventListener('settingsChanged', () => {
-    const searchQuery = document.getElementById('searchInput').value.trim();
-    if (searchQuery.length >= 2) {
-      performSearch(searchQuery);
-    } else {
-      loadSessions(currentPage);
-    }
-  });
 });
 
 let currentPage = 1;
@@ -150,20 +140,85 @@ function renderSessions(sessions) {
   container.innerHTML = sessions.map(s => {
     const title = truncateTitle(s.firstMessage, 80) || s.slug || s.id;
     const relativeTime = formatRelativeTime(s.timestamp);
+    // Only show expand button if session has agent children
+    const expandButton = s.hasAgentChildren ? \`
+      <button class="expand-children-btn" onclick="toggleChildren(event, '\${s.id}', '\${s.projectId}')" title="Show agent sessions">
+        <span class="expand-icon">▶</span>
+      </button>
+    \` : '';
 
     return \`
-      <a href="/session/\${s.id}?project=\${s.projectId}" class="session-card">
-        <div class="session-top">
-          <span class="session-title">\${escapeHtml(title)}</span>
-          <span class="session-date">\${relativeTime}</span>
-        </div>
-        <div class="session-meta">
-          <span class="session-slug">\${s.slug || ''}</span>
-          <span class="session-project">\${s.project}</span>
-        </div>
-      </a>
+      <div class="session-wrapper" data-session-id="\${s.id}">
+        <a href="/session/\${s.id}?project=\${s.projectId}" class="session-card">
+          <div class="session-top">
+            <span class="session-title">\${escapeHtml(title)}</span>
+            <span class="session-date">\${relativeTime}</span>
+          </div>
+          <div class="session-meta">
+            <span class="session-slug">\${s.slug || ''}</span>
+            <span class="session-project">\${s.project}</span>
+          </div>
+        </a>
+        \${expandButton}
+        <div class="session-children" id="children-\${s.id}" style="display: none;"></div>
+      </div>
     \`;
   }).join('');
+}
+
+// Track expanded sessions
+const expandedSessions = new Set();
+
+async function toggleChildren(event, sessionId, projectId) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const wrapper = document.querySelector(\`[data-session-id="\${sessionId}"]\`);
+  const childrenContainer = document.getElementById('children-' + sessionId);
+  const expandBtn = wrapper.querySelector('.expand-children-btn');
+  const expandIcon = expandBtn.querySelector('.expand-icon');
+
+  if (expandedSessions.has(sessionId)) {
+    // Collapse
+    expandedSessions.delete(sessionId);
+    childrenContainer.style.display = 'none';
+    expandIcon.textContent = '▶';
+    expandBtn.classList.remove('expanded');
+  } else {
+    // Expand and load children
+    expandedSessions.add(sessionId);
+    expandIcon.textContent = '▼';
+    expandBtn.classList.add('expanded');
+    childrenContainer.style.display = 'block';
+    childrenContainer.innerHTML = '<div class="loading-children">Loading agent sessions...</div>';
+
+    try {
+      const res = await fetch('/api/sessions/' + encodeURIComponent(sessionId) + '/children?project=' + encodeURIComponent(projectId));
+      const data = await res.json();
+
+      if (data.children && data.children.length > 0) {
+        childrenContainer.innerHTML = data.children.map(child => {
+          const title = truncateTitle(child.firstMessage, 60) || child.slug || child.id;
+          const relativeTime = formatRelativeTime(child.timestamp);
+          return \`
+            <a href="/session/\${child.id}?project=\${child.projectId}" class="session-card child-session agent-session">
+              <div class="session-top">
+                <span class="session-title">\${escapeHtml(title)}</span>
+                <span class="session-date">\${relativeTime}</span>
+              </div>
+              <div class="session-meta">
+                <span class="session-slug">\${child.slug || ''} <span class="agent-badge">agent</span></span>
+              </div>
+            </a>
+          \`;
+        }).join('');
+      } else {
+        childrenContainer.innerHTML = '<div class="no-children">No agent sessions</div>';
+      }
+    } catch (err) {
+      childrenContainer.innerHTML = '<div class="error">Failed to load agent sessions</div>';
+    }
+  }
 }
 
 function renderPagination(data) {

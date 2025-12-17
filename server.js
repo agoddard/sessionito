@@ -116,6 +116,129 @@ app.get('/api/sessions/:sessionId', async (req, res) => {
   }
 });
 
+// API: Get parent session for an agent session
+app.get('/api/sessions/:sessionId/parent', async (req, res) => {
+  try {
+    const sessionId = req.params.sessionId;
+    const projectId = req.query.project;
+
+    if (!projectId) {
+      return res.status(400).json({ error: 'project parameter required' });
+    }
+
+    // Extract agentId from session filename (agent-{agentId}.jsonl)
+    const agentIdMatch = sessionId.match(/^agent-(.+)$/);
+    if (!agentIdMatch) {
+      return res.json({ parent: null }); // Not an agent session
+    }
+    const agentId = agentIdMatch[1];
+
+    const projectPath = path.join(PROJECTS_PATH, projectId);
+    const readline = require('readline');
+
+    // Scan all non-agent sessions in the project to find the parent
+    const files = fs.readdirSync(projectPath).filter(f =>
+      f.endsWith('.jsonl') && !f.startsWith('agent-')
+    );
+
+    for (const file of files) {
+      const sessionPath = path.join(projectPath, file);
+      const fileStream = fs.createReadStream(sessionPath);
+      const rl = readline.createInterface({
+        input: fileStream,
+        crlfDelay: Infinity
+      });
+
+      for await (const line of rl) {
+        if (line.includes(`"agentId":"${agentId}"`)) {
+          const metadata = await projectScanner.extractSessionMetadata(sessionPath);
+          rl.close();
+          fileStream.destroy();
+          return res.json({
+            parent: {
+              id: file.replace('.jsonl', ''),
+              ...metadata,
+              project: projectScanner.getProjectName(projectId),
+              projectId
+            }
+          });
+        }
+      }
+    }
+
+    res.json({ parent: null });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Get child agent sessions for a parent session
+app.get('/api/sessions/:sessionId/children', async (req, res) => {
+  try {
+    const sessionId = req.params.sessionId;
+    const projectId = req.query.project;
+
+    if (!projectId) {
+      return res.status(400).json({ error: 'project parameter required' });
+    }
+
+    const sessionPath = path.join(PROJECTS_PATH, projectId, `${sessionId}.jsonl`);
+
+    if (!fs.existsSync(sessionPath)) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // Read the session file and find all agentIds referenced in toolUseResult
+    const readline = require('readline');
+    const agentIds = new Set();
+
+    const fileStream = fs.createReadStream(sessionPath);
+    const rl = readline.createInterface({
+      input: fileStream,
+      crlfDelay: Infinity
+    });
+
+    for await (const line of rl) {
+      if (line.trim()) {
+        try {
+          const parsed = JSON.parse(line);
+          // Check for toolUseResult.agentId
+          if (parsed.toolUseResult?.agentId) {
+            agentIds.add(parsed.toolUseResult.agentId);
+          }
+        } catch (e) { /* skip malformed lines */ }
+      }
+    }
+
+    // Look up the corresponding agent session files
+    const projectPath = path.join(PROJECTS_PATH, projectId);
+    const children = [];
+
+    for (const agentId of agentIds) {
+      const agentSessionPath = path.join(projectPath, `agent-${agentId}.jsonl`);
+      if (fs.existsSync(agentSessionPath)) {
+        const metadata = await projectScanner.extractSessionMetadata(agentSessionPath);
+        children.push({
+          id: `agent-${agentId}`,
+          agentId,
+          ...metadata,
+          project: projectScanner.getProjectName(projectId),
+          projectId
+        });
+      }
+    }
+
+    // Sort by timestamp
+    children.sort((a, b) =>
+      new Date(b.timestamp || 0) - new Date(a.timestamp || 0)
+    );
+
+    res.json({ children });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // API: Search sessions
 app.get('/api/search', async (req, res) => {
   const query = req.query.q?.toLowerCase();

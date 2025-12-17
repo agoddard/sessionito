@@ -21,6 +21,15 @@
       </div>
     </div>
   </div>
+
+  <aside class="agent-sidebar" id="agentSidebar" style="display: none;">
+    <div class="sidebar-header">
+      <h3 class="sidebar-title">Agent Sessions</h3>
+    </div>
+    <div id="hierarchySection" class="hierarchy-content">
+      <!-- Parent/children links will be inserted here -->
+    </div>
+  </aside>
 </div>
 
 <script src="/js/renderer.js"></script>
@@ -73,17 +82,60 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSession();
   if (projectId) {
     loadProjectSessions();
+    loadHierarchy();
   } else {
     document.getElementById('sessionSidebar').style.display = 'none';
   }
-
-  // Re-render sidebar when settings change
-  window.addEventListener('settingsChanged', () => {
-    if (cachedProjectSessions.length > 0) {
-      renderSessionNav(cachedProjectSessions);
-    }
-  });
 });
+
+async function loadHierarchy() {
+  const sidebar = document.getElementById('agentSidebar');
+  const section = document.getElementById('hierarchySection');
+  const isAgentSession = sessionId.startsWith('agent-');
+
+  try {
+    if (isAgentSession) {
+      // Load parent session
+      const res = await fetch('/api/sessions/' + encodeURIComponent(sessionId) + '/parent?project=' + encodeURIComponent(projectId));
+      const data = await res.json();
+
+      if (data.parent) {
+        sidebar.style.display = 'flex';
+        section.innerHTML = \`
+          <div class="hierarchy-group">
+            <div class="hierarchy-label">Parent Session</div>
+            <a href="/session/\${data.parent.id}?project=\${projectId}" class="hierarchy-link parent-link">
+              <span class="hierarchy-icon">↑</span>
+              <span class="hierarchy-title">\${escapeHtml(truncateTitle(data.parent.firstMessage, 50) || data.parent.slug || data.parent.id.slice(0, 8))}</span>
+            </a>
+          </div>
+        \`;
+      }
+    } else {
+      // Load children sessions
+      const res = await fetch('/api/sessions/' + encodeURIComponent(sessionId) + '/children?project=' + encodeURIComponent(projectId));
+      const data = await res.json();
+
+      if (data.children && data.children.length > 0) {
+        sidebar.style.display = 'flex';
+        section.innerHTML = \`
+          <div class="hierarchy-group">
+            <div class="hierarchy-label">Spawned Agents (\${data.children.length})</div>
+            \${data.children.map(child => \`
+              <a href="/session/\${child.id}?project=\${projectId}" class="hierarchy-link child-link">
+                <span class="hierarchy-icon">→</span>
+                <span class="hierarchy-title">\${escapeHtml(truncateTitle(child.firstMessage, 50) || child.slug || child.id)}</span>
+              </a>
+            \`).join('')}
+          </div>
+        \`;
+      }
+    }
+  } catch (err) {
+    // Silently fail - hierarchy is optional
+    console.error('Failed to load hierarchy:', err);
+  }
+}
 
 async function loadSession() {
   try {

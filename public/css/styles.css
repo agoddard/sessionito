@@ -75,14 +75,19 @@ a:hover {
 }
 
 .logo {
-  font-family: 'Outfit', sans-serif;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--sno);
   text-decoration: none;
 }
 
-.logo:hover {
+.logo pre {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.5rem;
+  line-height: 1.1;
+  color: var(--sno);
+  margin: 0;
+  white-space: pre;
+}
+
+.logo:hover pre {
   color: var(--grey-200);
 }
 
@@ -312,8 +317,8 @@ a:hover {
 
 /* Session Sidebar */
 .session-sidebar {
-  width: 280px;
-  min-width: 280px;
+  width: 220px;
+  min-width: 220px;
   background: var(--grey-900);
   border-right: 1px solid var(--border-color);
   display: flex;
@@ -1138,12 +1143,17 @@ a:hover {
 /* Responsive */
 @media (max-width: 1024px) {
   .session-sidebar {
-    width: 240px;
-    min-width: 240px;
+    width: 180px;
+    min-width: 180px;
   }
 
   .session-main {
     padding: 24px;
+  }
+
+  .agent-sidebar {
+    width: 180px;
+    min-width: 180px;
   }
 }
 
@@ -1302,4 +1312,200 @@ a:hover {
 
 .settings-option:hover {
   color: var(--sno);
+}
+
+/* Session Hierarchy - Session List Expansion */
+.session-wrapper {
+  position: relative;
+}
+
+.expand-children-btn {
+  position: absolute;
+  bottom: 16px;
+  right: 20px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--caution-amber);
+  border: 1px solid var(--caution-amber);
+  border-radius: 4px;
+  color: var(--charcoal);
+  cursor: pointer;
+  font-size: 0.625rem;
+  transition: all 150ms ease-out;
+  z-index: 2;
+}
+
+.expand-children-btn:hover {
+  background: #d4900a;
+  border-color: #d4900a;
+  color: var(--charcoal);
+}
+
+.expand-children-btn.expanded {
+  background: var(--caution-amber);
+  border-color: var(--caution-amber);
+  color: var(--charcoal);
+}
+
+.expand-icon {
+  transition: transform 150ms ease-out;
+}
+
+.session-children {
+  margin-top: 8px;
+  padding-left: 24px;
+  border-left: 2px solid var(--grey-700);
+  margin-left: 12px;
+}
+
+.session-children .session-card {
+  background: var(--grey-900);
+}
+
+.session-children .session-card:hover {
+  background: rgba(14, 77, 104, 0.1);
+}
+
+.child-session {
+  border-left: 2px solid var(--caution-amber);
+  margin-bottom: 8px;
+}
+
+.loading-children,
+.no-children {
+  padding: 16px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* Agent session badge */
+.agent-badge {
+  display: inline-block;
+  background: var(--caution-amber);
+  color: var(--charcoal);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-left: 8px;
+}
+
+.agent-session {
+  border-left: 2px solid var(--caution-amber);
+}
+
+/* Agent Sidebar (Right) */
+.agent-sidebar {
+  width: 220px;
+  min-width: 220px;
+  background: var(--grey-900);
+  border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 60px;
+  height: calc(100vh - 60px);
+  overflow: hidden;
+}
+
+.agent-sidebar .sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(239, 160, 11, 0.08);
+}
+
+.agent-sidebar .sidebar-title {
+  color: var(--caution-amber);
+}
+
+.hierarchy-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.hierarchy-group {
+  margin-bottom: 20px;
+}
+
+.hierarchy-group:last-child {
+  margin-bottom: 0;
+}
+
+.hierarchy-label {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--caution-amber);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+
+.hierarchy-link {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  background: var(--charcoal);
+  border: 1px solid var(--border-color);
+  margin-bottom: 8px;
+  transition: all 150ms ease-out;
+}
+
+.hierarchy-link:last-child {
+  margin-bottom: 0;
+}
+
+.hierarchy-link:hover {
+  background: rgba(239, 160, 11, 0.1);
+  border-color: var(--caution-amber);
+}
+
+.hierarchy-icon {
+  font-size: 1rem;
+  color: var(--caution-amber);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.hierarchy-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.parent-link {
+  border-color: var(--vermont);
+  background: rgba(51, 168, 129, 0.08);
+}
+
+.parent-link:hover {
+  background: rgba(51, 168, 129, 0.15);
+  border-color: var(--vermont);
+}
+
+.parent-link .hierarchy-icon {
+  color: var(--vermont);
+}
+
+/* Responsive - hide agent sidebar on mobile */
+@media (max-width: 1200px) {
+  .agent-sidebar {
+    display: none !important;
+  }
 }

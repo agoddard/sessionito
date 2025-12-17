@@ -100,14 +100,26 @@ class ProjectScanner {
         firstMessage: null,
         isAgentOnly: false,
         userMessageCount: 0,
-        assistantMessageCount: 0
+        assistantMessageCount: 0,
+        agentId: null,        // Short agent ID if this is an agent session
+        isAgentSession: false, // True if agent-*.jsonl or has agentId
+        hasAgentChildren: false // True if session spawned agent sessions
       };
+      const spawnedAgentIds = new Set();
 
       rl.on('line', (line) => {
         lineCount++;
+
+        // Quick check for agentId in toolUseResult (can appear anywhere in file)
+        if (line.includes('"agentId"') && line.includes('toolUseResult')) {
+          const agentMatch = line.match(/"agentId"\s*:\s*"([^"]+)"/);
+          if (agentMatch) {
+            spawnedAgentIds.add(agentMatch[1]);
+          }
+        }
+
+        // Only parse full JSON for first 50 lines (for metadata extraction)
         if (lineCount > 50) {
-          rl.close();
-          stream.destroy();
           return;
         }
 
@@ -148,18 +160,31 @@ class ProjectScanner {
             metadata.gitBranch = parsed.gitBranch;
             metadata.version = parsed.version;
           }
+
+          // Extract agentId if present (agent sessions have this field)
+          if (parsed.agentId && !metadata.agentId) {
+            metadata.agentId = parsed.agentId;
+          }
         } catch (e) { /* skip malformed lines */ }
       });
 
       rl.on('close', () => {
+        // Detect agent session by filename pattern (agent-*.jsonl) or presence of agentId
+        const filename = path.basename(sessionPath);
+        const isAgentFilename = filename.startsWith('agent-');
+        metadata.isAgentSession = isAgentFilename || !!metadata.agentId;
+
         // Mark as agent-only if no user messages and first message starts with "agent"
         metadata.isAgentOnly = metadata.userMessageCount === 0 &&
           metadata.assistantMessageCount > 0 &&
           (metadata.slug?.toLowerCase().startsWith('agent') || false);
+
+        // Check if this session spawned any agent sessions
+        metadata.hasAgentChildren = spawnedAgentIds.size > 0;
+
         resolve(metadata);
       });
 
-      rl.on('close', () => resolve(metadata));
       rl.on('error', () => resolve(metadata));
     });
   }
