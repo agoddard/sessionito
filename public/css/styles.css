@@ -219,11 +219,20 @@ a:hover {
   margin-bottom: 8px;
 }
 
-.session-slug {
+.session-card .session-title {
   font-family: 'Outfit', sans-serif;
   font-weight: 500;
   color: var(--sno);
-  font-size: 1.125rem;
+  font-size: 1rem;
+  line-height: 1.4;
+  flex: 1;
+  margin-right: 12px;
+}
+
+.session-meta .session-slug {
+  font-family: 'IBM Plex Sans', sans-serif;
+  color: var(--text-muted);
+  font-size: 0.8rem;
 }
 
 .session-date {
@@ -369,24 +378,46 @@ a:hover {
   border-color: var(--primary);
 }
 
+.nav-item-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin-bottom: 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.session-nav-item.active .nav-item-title {
+  color: var(--sno);
+}
+
+.nav-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .nav-item-slug {
   font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
+  font-size: 0.75rem;
+  color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .session-nav-item.active .nav-item-slug {
-  color: var(--sno);
+  color: var(--grey-300);
 }
 
 .nav-item-date {
   font-family: 'Space Mono', monospace;
   font-size: 0.7rem;
   color: var(--text-muted);
-  margin-top: 4px;
 }
 
 .session-nav-item.active .nav-item-date {
@@ -435,6 +466,13 @@ a:hover {
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--sno);
+  margin-bottom: 8px;
+}
+
+.session-slug-subtitle {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 0.875rem;
+  color: var(--text-muted);
   margin-bottom: 16px;
 }
 
